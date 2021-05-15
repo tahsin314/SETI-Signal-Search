@@ -4,6 +4,7 @@ import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import cv2
 import gc
 import matplotlib.pyplot as plt
+from catalyst.data.sampler import BalanceClassSampler
 import torch.nn.functional as F
 import os
 os.environ['OPENCV_IO_MAX_IMAGE_PIXELS']=str(2**64)
@@ -20,25 +21,26 @@ import warnings
 warnings.filterwarnings('ignore')
 
 class SETIDataset(Dataset):
-    def __init__(self, image_ids, labels=None, transforms=None):
+    def __init__(self, image_ids, labels=None, dim=256, transforms=None):
         super().__init__()
         self.image_ids = image_ids
         self.labels = labels
+        self.dim = dim
         self.transforms = transforms
         
     def __getitem__(self, idx):
         image_id = self.image_ids[idx]
-        image = np.load(image_id)
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
+        image = np.load(image_id).astype(np.float32)
+        image = image.reshape(1, 273*2, 256*3)
+        image = np.vstack(image).transpose((1, 0))
+        # image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        image = np.resize(image, (1, self.dim, self.dim))
         if self.transforms is not None:
-            # print(image.shape, image.transpose(1, 2, 0).shape, 
-            # image.transpose(1, 2, 0).transpose(2, 0, 1).shape)
             aug = self.transforms(image=image.transpose(1, 2, 0))
             image = aug['image'].transpose(2, 0, 1)
         if self.labels is not None:
             target = self.labels[idx]
-            return image_id, image, self.onehot(2, target)
+            return image_id, image, target
         else:
             return image_id, image
 
@@ -60,17 +62,20 @@ class SETIDataModule(pl.LightningDataModule):
         self.train_ds = train_ds
         self.valid_ds = valid_ds
         self.test_ds = test_ds
-        # self.train_transform = train_transform
-        # self.valid_transform = valid_transform
-        # self.test_transform = test_transform
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.num_workers = num_workers
         self.sampler = sampler
 
     def train_dataloader(self):
-        train_loader = DataLoader(self.train_ds,batch_size=self.batch_size, shuffle=self.shuffle, drop_last=True,
-        num_workers=self.num_workers, pin_memory=True)
+        if self.sampler is not None:
+            sampler = self.sampler(labels=self.train_ds.get_labels(), mode="upsampling")
+            train_loader = DataLoader(self.train_ds,batch_size=self.batch_size, 
+            sampler= sampler, shuffle=False, drop_last=True,
+            num_workers=self.num_workers, pin_memory=True)
+        else:
+            train_loader = DataLoader(self.train_ds,batch_size=self.batch_size, shuffle=self.shuffle, drop_last=True,
+            num_workers=self.num_workers, pin_memory=True)
         return train_loader
 
     def val_dataloader(self):
