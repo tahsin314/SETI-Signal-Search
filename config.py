@@ -47,6 +47,7 @@ gpu_ids = [int(i) for i in params['gpu_ids'].split(',')]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 mixed_precision = bool(int(params['mixed_precision']))
 mode = params['mode']
+oof = bool(int(params['oof']))
 model_list = ['gluon_resnet34_v1b', 'gluon_resnet50_v1b', 'gluon_resnet101_v1b', 
 'gluon_resnext101_64x4d', 'gluon_seresnext101_32x4d', 'gluon_resnext50_32x4d',
 'gluon_seresnext50_32x4d', 'gluon_seresnext101_32x4d', 'resnest50d_1s4x24d', 'resnest101e', 'tf_efficientnet_b0',
@@ -56,7 +57,7 @@ model_type = params['model_type']
 pretrained_model = [i for i in model_list if params['pretrained_model'] in i][0]
 model_name = f'{pretrained_model}_fold_{fold}'
 if model_type is not 'Normal':
-    model_name = f'{model_type}_{pretrained_model}_fold_{fold}'
+    model_name = f'{model_type}_{pretrained_model}'
 model_dir = params['model_dir']
 history_dir = params['history_dir']
 load_model = bool(int(params['load_model']))
@@ -68,15 +69,17 @@ else:
 
 imagenet_stats = ([0.485, 0.456, 0.406, 0.485, 0.456, 0.406], 
 [0.229, 0.224, 0.225, 0.229, 0.224, 0.225])
+ratio = 273*6/256
+w, h = sz, int(ratio*sz)
 n_epochs = int(params['n_epochs'])
 TTA = int(params['TTA'])
 balanced_sampler = bool(int(params['balanced_sampler']))
 
 train_aug = Compose([
-  ShiftScaleRotate(p=0.9,rotate_limit=360, border_mode= cv2.BORDER_CONSTANT, value=[0, 0, 0], scale_limit=0.25),
+  ShiftScaleRotate(p=0.5,rotate_limit=360, border_mode= cv2.BORDER_CONSTANT, value=[0, 0, 0], scale_limit=0.25),
     OneOf([
     ], p=0.20),
-    RandomSizedCrop(min_max_height=(int(sz*0.8), int(sz*0.8)), height=sz, width=sz, p=0.5),
+    # RandomSizedCrop(min_max_height=(int(sz*0.8), int(sz*0.8)), height=sz, width=sz, p=0.5),
     OneOf([
         GaussNoise(var_limit=0.1),
         Blur(),
@@ -86,13 +89,13 @@ train_aug = Compose([
     HorizontalFlip(0.4),
     VerticalFlip(0.4),
     # Rotate(limit=360, border_mode=2, p=0.6), 
-    # ColorConstancy(p=0.3, always_apply=False),
-    # Normalize(imagenet_stats, always_apply=True)
-    ]
+    Resize(sz, sz, p=1, always_apply=True)
+    ],
+    
       )
 # train_aug = None
-# val_aug = Compose([Normalize(imagenet_stats, always_apply=True)])
-val_aug = None
+val_aug = Compose([Resize(sz, sz, p=1, always_apply=True)])
+# val_aug = None
 data_dir = params['data_dir']
 image_path = params['image_path']
 test_image_path = params['test_image_path']

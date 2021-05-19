@@ -19,7 +19,6 @@ from tqdm import tqdm_notebook as tqdm
 from utils import *
 import warnings
 warnings.filterwarnings('ignore')
-
 class SETIDataset(Dataset):
     def __init__(self, image_ids, labels=None, dim=256, transforms=None):
         super().__init__()
@@ -31,10 +30,12 @@ class SETIDataset(Dataset):
     def __getitem__(self, idx):
         image_id = self.image_ids[idx]
         image = np.load(image_id).astype(np.float32)
-        image = image.reshape(1, 273*2, 256*3)
+        # i1 = np.vstack([tmp[0], tmp[1]])
+        # i2 = np.vstack([tmp[2], tmp[3]])
+        # i3 = np.vstack([tmp[4], tmp[5]])
+        # image = np.hstack([i1, i2, i3])
         image = np.vstack(image).transpose((1, 0))
-        # image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        image = np.resize(image, (1, self.dim, self.dim))
+        image = image[np.newaxis,:,:]
         if self.transforms is not None:
             aug = self.transforms(image=image.transpose(1, 2, 0))
             image = aug['image'].transpose(2, 0, 1)
@@ -80,13 +81,13 @@ class SETIDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         val_loader = DataLoader(self.valid_ds,batch_size=self.batch_size, drop_last=True,
-        shuffle=self.shuffle,
+        shuffle=False,
          num_workers=self.num_workers, pin_memory=True)
         return val_loader
 
     def test_dataloader(self):
         test_loader = DataLoader(self.test_ds,batch_size=self.batch_size, 
-        shuffle=self.shuffle, drop_last=True, num_workers=self.num_workers,
+        shuffle=False, num_workers=self.num_workers,
          pin_memory=True)
         return test_loader
         
