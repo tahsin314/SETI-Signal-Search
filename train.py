@@ -188,7 +188,7 @@ for f in range(n_fold):
     except:
       pass
     chk_path = checkpoint_callback2.best_model_path
-    model2 = LightningSETI.load_from_checkpoint(chk_path, model=base, loss_fns=base_criterion, optim=optimizer,
+    model2 = LightningSETI.load_from_checkpoint(chk_path, model=base, choice_weights=[1.0, 0.0], loss_fns=base_criterion, optim=optimizer,
     plist=plist, batch_size=batch_size, 
     lr_scheduler=lr_reduce_scheduler, cyclic_scheduler=cyclic_scheduler, 
     num_class=num_class, learning_rate = learning_rate, fold=f, random_id=random_id)
