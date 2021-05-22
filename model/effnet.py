@@ -26,7 +26,6 @@ class EffNet(nn.Module):
     def __init__(self, pretrained_model='tf_efficientnet_b4', num_class=1):
         super(EffNet, self).__init__()
         self.backbone = timm.create_model(pretrained_model, pretrained=True, in_chans=1)
-        self.num_named_param = 0
         self.in_features = self.backbone.bn2.num_features
         self.head = Head(self.in_features, num_class, activation='mish')
         

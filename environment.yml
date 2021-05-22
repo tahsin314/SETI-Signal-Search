@@ -182,15 +182,15 @@ dependencies:
     - termcolor==1.1.0
     - threadpoolctl==2.1.0
     - tifffile==2020.8.13
-    - timm==0.4.5
     - tmuxp==1.7.2
     - torch==1.8.1
+    - torch-tb-profiler==0.1.0
     - torchmetrics==0.2.0
     - torchsummary==1.5.1
     - torchvision==0.9.1
     - triton==1.0.0.dev20210330
     - utilitys==0.2.0
-    - wandb==0.10.27
+    - wandb==0.10.30
     - werkzeug==1.0.1
     - wheel==0.36.2
     - xmltodict==0.12.0

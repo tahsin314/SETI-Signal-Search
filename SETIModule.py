@@ -1,3 +1,4 @@
+from random import choices
 from config import *
 import numpy as np
 import torch
@@ -6,14 +7,14 @@ import pytorch_lightning as pl
 from sklearn.metrics import roc_auc_score
 
 class LightningSETI(pl.LightningModule):
-  def __init__(self, model, loss_fn, optim, plist, 
+  def __init__(self, model, choice_weights, loss_fns, optim, plist, 
   batch_size, lr_scheduler, random_id, fold=0, distributed_backend='dp',
   cyclic_scheduler=None, num_class=1, patience=3, factor=0.5,
    learning_rate=1e-3):
       super().__init__()
       self.model = model
       self.num_class = num_class
-      self.loss_fn = loss_fn
+      self.loss_fns = loss_fns
       self.optim = optim
       self.plist = plist 
       self.lr_scheduler = lr_scheduler
@@ -25,6 +26,7 @@ class LightningSETI(pl.LightningModule):
       self.factor = factor
       self.learning_rate = learning_rate
       self.batch_size = batch_size
+      self.choice_weights = choice_weights
       self.epoch_end_output = [] # Ugly hack for gathering results from multiple GPUs
   
   def forward(self, x):
@@ -43,26 +45,26 @@ class LightningSETI(pl.LightningModule):
        'cyclic_scheduler': self.cyclic_scheduler}
         )
  
-  def loss_func(self, logits, labels):
-      return self.loss_fn(logits, labels)
+  def loss_func(self, logits, labels, choice_weights):
+      criterion = choices(self.loss_fns, weights=choice_weights)[0]
+      return criterion(logits, labels)
   
-  def step(self, batch):
+  def step(self, batch, choice_weights):
     _, x, y = batch
     x, y = x.float(), y.float()
     logits = self.forward(x)
-    logits = torch.clip(logits, -1e10, 1e10)
-    loss = self.loss_func(torch.squeeze(logits), torch.squeeze(y))
+    loss = self.loss_func(torch.squeeze(logits), torch.squeeze(y), choice_weights)
     return loss, logits, y  
   
   def training_step(self, train_batch, batch_idx):
-    loss, _, _ = self.step(train_batch)
+    loss, _, _ = self.step(train_batch, self.choice_weights)
     self.log(f'train_loss_fold_{self.fold}', loss)
     if self.cyclic_scheduler is not None:
       self.cyclic_scheduler.step()
     return loss
 
   def validation_step(self, val_batch, batch_idx):
-      loss, logits, y = self.step(val_batch)
+      loss, logits, y = self.step(val_batch, [1.0, 0])
       self.log(f'val_loss_fold_{self.fold}', loss, on_step=True, on_epoch=True, sync_dist=True) 
       val_log = {'val_loss':loss, 'probs':logits, 'gt':y}
       self.epoch_end_output.append({k:v.cpu() for k,v in val_log.items()})
@@ -75,8 +77,8 @@ class LightningSETI(pl.LightningModule):
         data_id, x, y = test_batch
       data_id = [i.split('/')[-1].split('.')[0] for i in list(data_id)]
       pred = self.forward(x)
-      pred = torch.clip(pred, -1e-10, 1e10)
       pred = pred.sigmoid().detach().cpu().numpy()
+      pred = np.nan_to_num(pred, 0.5)
       if len(test_batch) == 2:
         test_log = {'id':data_id, 'target':np.squeeze(pred)}
       if len(test_batch) == 3:
@@ -106,6 +108,7 @@ class LightningSETI(pl.LightningModule):
     probs = torch.cat([torch.tensor(out['probs']) for out in outputs], dim=0)
     gt = torch.cat([torch.tensor(out['gt']) for out in outputs], dim=0)
     pr, la = self.label_processor(torch.squeeze(probs), torch.squeeze(gt))
+    pr = np.nan_to_num(pr, 0.5)
     roc_auc = torch.tensor(roc_auc_score(la, pr))
     print(f'Epoch: {self.current_epoch} Loss : {avg_loss.numpy():.2f}, roc_auc: {roc_auc:.4f}')
     logs = {f'{mode}_loss': avg_loss, f'{mode}_roc_auc': roc_auc}

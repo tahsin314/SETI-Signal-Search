@@ -22,7 +22,7 @@ class Resne_t(nn.Module):
 
     def __init__(self, model_name='resnest50_fast_1s1x64d', num_class=1):
         super().__init__()
-        self.backbone = timm.create_model(model_name, pretrained=True, in_chans=6)
+        self.backbone = timm.create_model(model_name, pretrained=True, in_chans=1)
         self.in_features = self.backbone.fc.in_features
         self.head = Head(self.in_features,num_class, activation='mish')
         self.out = nn.Linear(self.in_features, num_class)

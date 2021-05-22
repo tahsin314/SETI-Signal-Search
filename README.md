@@ -3,11 +3,6 @@ This Repo contains my scripts for the [
 SETI Breakthrough Listen - E.T. Signal Search](https://www.kaggle.com/c/seti-breakthrough-listen) Competition.
 
 ## Papers
-- [Skin lesion classification with ensemble of squeeze-and-excitation networks and semi-supervised learning](https://arxiv.org/abs/1809.02568)
-- [Self-training with Noisy Student improves ImageNet classification](https://arxiv.org/pdf/1911.04252.pdf)
-- [Bottleneck Transformers for Visual Recognition](https://arxiv.org/pdf/2101.11605.pdf)
-- [Rotate to Attend: Convolutional Triplet Attention Module](https://arxiv.org/pdf/2010.03045.pdf)
-
 ## Features
 - &#x2611; Balanced Sampler 
 
@@ -17,20 +12,13 @@ SETI Breakthrough Listen - E.T. Signal Search](https://www.kaggle.com/c/seti-bre
 
 - &#x2611; Optimum Learning Rate Finder [LR Finder Suggestion is terrible. I just observed the learning rate at which loss starts to diverge and set `learning_rate = learning rate at diverging loss/100`. No particular intention behind it.] 
 
-- &#x2611; TTA 
+- &#x2611; Out of Fold
 ## Resources
-- [Margin Focal Loss](https://www.kaggle.com/c/siim-isic-DR-classification/discussion/155201)
-- [APTOS Gold Medal Solutions](https://www.kaggle.com/c/aptos2019-blindness-detection/discussion/108307): Although data type is different but it might be helpful.
-- [Melanoma Recognition via Visual Attention](https://github.com/SaoYan/IPMI2019-AttnMel)
 
 ## Can be useful
-- [Deep Metric Learning Solution For MVTec Anomaly Detection Dataset](https://medium.com/analytics-vidhya/spotting-defects-deep-metric-learning-solution-for-mvtec-anomaly-detection-dataset-c77691beb1eb)
-- [Ugly Duckling Concept](https://www.kaggle.com/c/siim-isic-DR-classification/discussion/155348)
-- Humpback Whale Classification 1st place [solution](https://www.kaggle.com/c/humpback-whale-identification/discussion/82366)
-- [Attention model](https://www.kaggle.com/c/siim-isic-melanoma-classification/discussion/171745) for feature extraction 
 
 ## How to run
-- Run `git clone https://github.com/tahsin314/Diabetic_Retinopathy-Detection-Pattern-Recognition-Course-Project`
+- Run `git clone https://github.com/tahsin314/SETI-Signal-Search`
 - Run `conda env create -f environment.yml`
 - Run `train.py`. Change parameters according to your preferences from the `dr_config.ini` file before training.
 - `dr_config` parameters:
@@ -59,6 +47,7 @@ SETI Breakthrough Listen - E.T. Signal Search](https://www.kaggle.com/c/seti-bre
     ben_color = Ben Graham's preprocessing technique. True if set to 1
     n_epochs = number of epochs to train
     TTA = Test Time Augmentation
+    oof = Out of Fold(1 if True)
     balanced_sampler 
     data_dir 
     image_path 

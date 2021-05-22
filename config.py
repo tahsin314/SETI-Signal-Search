@@ -2,6 +2,7 @@ import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
 from configparser import ConfigParser as cfg
 import string
+from catalyst.data.sampler import BalanceClassSampler
 import cv2
 import pandas as pd
 import torch 
@@ -41,7 +42,7 @@ patience = int(params['patience'])
 accum_step = int(params['accum_step'])
 opts = ['normal', 'mixup', 'cutmix']
 num_class = int(params['num_class'])
-choice_weights = [1.00, 0.00, 0.00]
+choice_weights = [0.70, 0.30]
 cam_layer_name = params['cam_layer_name']
 gpu_ids = [int(i) for i in params['gpu_ids'].split(',')]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,6 +75,9 @@ w, h = sz, int(ratio*sz)
 n_epochs = int(params['n_epochs'])
 TTA = int(params['TTA'])
 balanced_sampler = bool(int(params['balanced_sampler']))
+if balanced_sampler:
+    sampler = BalanceClassSampler
+else: sampler = None
 
 train_aug = Compose([
   ShiftScaleRotate(p=0.5,rotate_limit=360, border_mode= cv2.BORDER_CONSTANT, value=[0, 0, 0], scale_limit=0.25),
@@ -89,13 +93,13 @@ train_aug = Compose([
     HorizontalFlip(0.4),
     VerticalFlip(0.4),
     # Rotate(limit=360, border_mode=2, p=0.6), 
-    Resize(sz, sz, p=1, always_apply=True)
+    # Resize(sz, sz, p=1, always_apply=True)
     ],
     
       )
 # train_aug = None
-val_aug = Compose([Resize(sz, sz, p=1, always_apply=True)])
-# val_aug = None
+# val_aug = Compose([Resize(sz, sz, p=1, always_apply=True)])
+val_aug = None
 data_dir = params['data_dir']
 image_path = params['image_path']
 test_image_path = params['test_image_path']

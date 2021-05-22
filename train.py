@@ -1,5 +1,7 @@
 import os
 import glob
+from functools import partial
+import gc
 from matplotlib.pyplot import axis
 from config import *
 import shutil
@@ -7,7 +9,6 @@ import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
-import cv2
 from tqdm import tqdm as T
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
@@ -22,6 +23,8 @@ LearningRateMonitor, StochasticWeightAveraging,)
 from pytorch_lightning.loggers import WandbLogger
 from SETIDataset import SETIDataset, SETIDataModule
 from catalyst.data.sampler import BalanceClassSampler
+from losses.ohem import ohem_loss
+from losses.mix import mixup, mixup_criterion
 from losses.regression_loss import *
 from losses.focal import (criterion_margin_focal_binary_cross_entropy,
 FocalLoss, FocalCosineLoss)
@@ -71,7 +74,11 @@ for i, (train_index, val_index) in enumerate(skf.split(X, y)):
 
 df['fold'] = df['fold'].astype('int')
 optimizer = AdamW
-criterion = nn.BCEWithLogitsLoss(reduction='sum')
+base_criterion = nn.BCEWithLogitsLoss(reduction='sum')
+# base_criterion = criterion_margin_focal_binary_cross_entropy
+mixup_criterion_ = partial(mixup_criterion, criterion=base_criterion, rate=1.0)
+ohem_criterion = partial(ohem_loss, rate=1.0, base_crit=base_criterion)
+criterions = [base_criterion, mixup_criterion_]
 # criterion = criterion_margin_focal_binary_cross_entropy
 
 lr_reduce_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau
@@ -112,21 +119,15 @@ for f in range(n_fold):
     train_ds = SETIDataset(train_df.id.values, train_df.target.values, dim=sz,
     transforms=train_aug)
 
-    if balanced_sampler:
-      sampler = BalanceClassSampler
-    else: sampler = None
-
     valid_ds = SETIDataset(valid_df.id.values, valid_df.target.values, dim=sz,
     transforms=val_aug)
-
-
     data_module = SETIDataModule(train_ds, valid_ds, test_ds,  sampler= sampler, 
     batch_size=batch_size)
     cyclic_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer(plist, lr=learning_rate), 
     5*len(data_module.train_dataloader()), 2, learning_rate/5, -1)
 
     if mode == 'lr_finder': cyclic_scheduler = None
-    model = LightningSETI(base, criterion, optimizer, plist, batch_size, 
+    model = LightningSETI(base, choice_weights, criterions, optimizer, plist, batch_size, 
     lr_reduce_scheduler,num_class, fold=f, cyclic_scheduler=cyclic_scheduler, learning_rate = learning_rate)
     checkpoint_callback1 = ModelCheckpoint(
         monitor=f'val_loss_fold_{f}',
@@ -180,13 +181,14 @@ for f in range(n_fold):
 
     wandb.log(params)
     trainer.fit(model, datamodule=data_module)
+    print(gc.collect())
     try:
       print(f"FOLD: {f} \
         Best Model path: {checkpoint_callback2.best_model_path} Best Score: {checkpoint_callback2.best_model_score:.4f}")
     except:
       pass
     chk_path = checkpoint_callback2.best_model_path
-    model2 = LightningSETI.load_from_checkpoint(chk_path, model=base, loss_fn=criterion, optim=optimizer,
+    model2 = LightningSETI.load_from_checkpoint(chk_path, model=base, loss_fns=base_criterion, optim=optimizer,
     plist=plist, batch_size=batch_size, 
     lr_scheduler=lr_reduce_scheduler, cyclic_scheduler=cyclic_scheduler, 
     num_class=num_class, learning_rate = learning_rate, fold=f, random_id=random_id)
@@ -209,4 +211,5 @@ for fname in glob.glob('submission_*.csv'):
 zippedList =  list(zip(np.array(ids), np.array(targets)/len(glob.glob('oof_*.csv'))))
 temp_df = pd.DataFrame(zippedList, columns = ['id','target'])
 temp_df.to_csv(f'submission.csv', index=False)
+wandb.save('*.csv')
 os.system(f"kaggle competitions submit seti-breakthrough-listen -f submission.csv -m '{model_name} OOF ROC_AUC: {oof_roc:.4f}'")
