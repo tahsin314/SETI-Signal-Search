@@ -27,6 +27,7 @@ class LightningSETI(pl.LightningModule):
       self.learning_rate = learning_rate
       self.batch_size = batch_size
       self.choice_weights = choice_weights
+      self.train_loss  = 0
       self.epoch_end_output = [] # Ugly hack for gathering results from multiple GPUs
   
   def forward(self, x):
@@ -57,15 +58,20 @@ class LightningSETI(pl.LightningModule):
     return loss, logits, y  
   
   def training_step(self, train_batch, batch_idx):
-    loss, _, _ = self.step(train_batch, self.choice_weights)
-    self.log(f'train_loss_fold_{self.fold}', loss)
+    if self.current_epoch < 5:
+      loss, _, _ = self.step(train_batch, [1.0, 0.0])
+    else:
+        loss, _, _ = self.step(train_batch, self.choice_weights)
+    self.train_loss  += loss.detach()
+    self.log(f'train_loss_fold_{self.fold}', self.train_loss/batch_idx, prog_bar=True, on_epoch=True)
     if self.cyclic_scheduler is not None:
       self.cyclic_scheduler.step()
     return loss
 
   def validation_step(self, val_batch, batch_idx):
+      self.train_loss  = 0
       loss, logits, y = self.step(val_batch, [1.0, 0])
-      self.log(f'val_loss_fold_{self.fold}', loss, on_step=True, on_epoch=True, sync_dist=True) 
+      self.log(f'val_loss_fold_{self.fold}', loss, on_epoch=True, sync_dist=True) 
       val_log = {'val_loss':loss, 'probs':logits, 'gt':y}
       self.epoch_end_output.append({k:v.cpu() for k,v in val_log.items()})
       return val_log

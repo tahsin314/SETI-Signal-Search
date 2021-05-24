@@ -107,7 +107,7 @@ for f in range(n_fold):
 
     wandb.watch(base)
     plist = [ 
-        {'params': base.backbone.parameters(),  'lr': learning_rate/10},
+        {'params': base.backbone.parameters(),  'lr': learning_rate/5},
         {'params': base.head.parameters(),  'lr': learning_rate}
     ]
     if model_type == 'TriplettAttention':
@@ -123,7 +123,8 @@ for f in range(n_fold):
     transforms=val_aug)
     data_module = SETIDataModule(train_ds, valid_ds, test_ds,  sampler= sampler, 
     batch_size=batch_size)
-    cyclic_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer(plist, lr=learning_rate), 
+    cyclic_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer(plist, 
+    lr=learning_rate), 
     5*len(data_module.train_dataloader()), 2, learning_rate/5, -1)
 
     if mode == 'lr_finder': cyclic_scheduler = None
@@ -169,7 +170,8 @@ for f in range(n_fold):
     if mode == 'lr_finder':
       trainer.train_dataloader = data_module.train_dataloader
       # Run learning rate finder
-      lr_finder = trainer.tuner.lr_find(model, data_module.train_dataloader(), min_lr=1e-6, max_lr=500, num_training=1000)
+      lr_finder = trainer.tuner.lr_find(model, data_module.train_dataloader(), min_lr=1e-6, 
+      max_lr=500, num_training=2000)
       # Plot with
       fig = lr_finder.plot(suggest=True, show=True)
       fig.savefig('lr_finder.png')

@@ -34,7 +34,6 @@ SETI Breakthrough Listen - E.T. Signal Search](https://www.kaggle.com/c/seti-bre
     num_class = If regression, it should be 1 otherwise 5
     gpu_ids = GPUs to use
     mixed_precision 
-    target_type = Regression, Classification or Ordinal Regression
     pretrained_model = model name
     model_type = Normal, TripletAttention, CBAttention
     cam_layer_name = Class Activation Mapping Layer
@@ -43,8 +42,6 @@ SETI Breakthrough Listen - E.T. Signal Search](https://www.kaggle.com/c/seti-bre
     mode = train or lr_finder
     load_model = 0 if False else 1
     imagenet_stats = mean and standard deviation of imagenet data
-    crop = False if 0 i.e, circle crop won't be applied 
-    ben_color = Ben Graham's preprocessing technique. True if set to 1
     n_epochs = number of epochs to train
     TTA = Test Time Augmentation
     oof = Out of Fold(1 if True)

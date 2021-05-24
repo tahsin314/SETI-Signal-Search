@@ -40,9 +40,8 @@ sz = int(params['sz'])
 learning_rate = float(params['learning_rate'])
 patience = int(params['patience'])
 accum_step = int(params['accum_step'])
-opts = ['normal', 'mixup', 'cutmix']
 num_class = int(params['num_class'])
-choice_weights = [0.70, 0.30]
+choice_weights = [0.90, 0.10]
 cam_layer_name = params['cam_layer_name']
 gpu_ids = [int(i) for i in params['gpu_ids'].split(',')]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -92,14 +91,14 @@ train_aug = Compose([
         ], p=0.1),
     HorizontalFlip(0.4),
     VerticalFlip(0.4),
-    # Rotate(limit=360, border_mode=2, p=0.6), 
-    # Resize(sz, sz, p=1, always_apply=True)
+    Rotate(limit=15, border_mode=2, p=0.4), 
+    Resize(sz, sz, p=1, always_apply=True)
     ],
     
       )
 # train_aug = None
-# val_aug = Compose([Resize(sz, sz, p=1, always_apply=True)])
-val_aug = None
+val_aug = Compose([Resize(sz, sz, p=1, always_apply=True)])
+# val_aug = None
 data_dir = params['data_dir']
 image_path = params['image_path']
 test_image_path = params['test_image_path']

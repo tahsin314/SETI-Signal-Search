@@ -35,7 +35,7 @@ def cutmix(data, targets, alpha):
     targets = [targets, shuffled_targets, lam]
     return data, targets
 
-def mixup(data, targets, alpha=0.4):
+def mixup(data, targets, alpha=1.0):
     indices = torch.randperm(data.size(0))
     shuffled_data = data[indices]
     shuffled_targets = targets[indices]
@@ -54,5 +54,5 @@ def cutmix_criterion(preds, targets, criterion, rate=0.7):
 def mixup_criterion(preds, targets, criterion, rate=0.7):
     preds, targets = mixup(preds, targets)
     targets1, targets2, lam = targets[0], targets[1], targets[2]
-    return lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2)
-    # return lam * criterion(preds, targets1) + (1 - lam) * criterion(preds, targets2)
+    return (lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2))/3
+    
