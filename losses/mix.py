@@ -1,6 +1,7 @@
 from losses.ohem import ohem_loss
 import numpy as np
 import torch
+from torch import nn
 
 
 def rand_bbox(size, lam):
@@ -54,7 +55,12 @@ def cutmix_criterion(preds, targets, criterion, rate=0.7):
     targets1, targets2, lam = targets[0], targets[1], targets[2]
     return lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2)
 
-def mixup_criterion(preds, targets, criterion, rate=0.7):
-    targets1, targets2, lam = targets[0], targets[1], targets[2]
-    return lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2)
+class MixupLoss(nn.Module):
+    def __init__(self, criterion, rate=0.7):
+        super(MixupLoss, self).__init__()
+        self.criterion = criterion
+        self.rate = rate
     
+    def forward(self, preds, targets):
+        targets1, targets2, lam = targets[0], targets[1], targets[2]
+        return lam * ohem_loss(self.rate, self.criterion, preds, targets1) + (1 - lam) * ohem_loss(self.rate, self.criterion, preds, targets2)

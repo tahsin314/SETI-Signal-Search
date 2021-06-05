@@ -1,4 +1,4 @@
-from random import choices
+from random import choice, choices
 from config import *
 from losses.mix import *
 import numpy as np
@@ -48,8 +48,7 @@ class LightningSETI(pl.LightningModule):
        'cyclic_scheduler': self.cyclic_scheduler}
         )
  
-  def loss_func(self, logits, labels, choice_weights):
-      self.criterion = choices(self.loss_fns, weights=choice_weights)[0]
+  def loss_func(self, logits, labels):
       return self.criterion(logits, labels)
   
   def step(self, batch, choice_weights):
@@ -59,14 +58,15 @@ class LightningSETI(pl.LightningModule):
       x, y1, y2, lam = mixup(x, y)
       y = [y1, y2, lam]
     logits = torch.squeeze(self.forward(x))
-    loss = self.loss_func(logits, y, choice_weights)
+    loss = self.loss_func(logits, y)
     return loss, logits, y  
   
   def training_step(self, train_batch, batch_idx):
-    if self.current_epoch < 4:
-      loss, _, _ = self.step(train_batch, [1.0, 0.0])
-    else:
-        loss, _, _ = self.step(train_batch, self.choice_weights)
+    # if self.current_epoch < 4:
+    #   loss, _, _ = self.step(train_batch, [1.0, 0.0])
+    # else:
+    self.criterion = choices(self.loss_fns, weights=choice_weights)[0]
+    loss, _, _ = self.step(train_batch, self.choice_weights)
     self.train_loss  += loss.detach()
     self.log(f'train_loss_fold_{self.fold}', self.train_loss/batch_idx, prog_bar=True)
     if self.cyclic_scheduler is not None:
@@ -75,7 +75,6 @@ class LightningSETI(pl.LightningModule):
 
   def validation_step(self, val_batch, batch_idx):
       self.train_loss  = 0
-      # self.criterion == self.loss_fns[0]
       loss, logits, y = self.step(val_batch, [1.0, 0])
       self.log(f'val_loss_fold_{self.fold}', loss, on_epoch=True, sync_dist=True) 
       val_log = {'val_loss':loss, 'probs':logits, 'gt':y}

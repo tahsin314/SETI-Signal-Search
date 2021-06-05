@@ -24,7 +24,7 @@ from pytorch_lightning.loggers import WandbLogger
 from SETIDataset import SETIDataset, SETIDataModule
 from catalyst.data.sampler import BalanceClassSampler
 from losses.ohem import ohem_loss
-from losses.mix import mixup, mixup_criterion
+from losses.mix import MixupLoss, mixup, MixupLoss
 from losses.regression_loss import *
 from losses.focal import (criterion_margin_focal_binary_cross_entropy,
 FocalLoss, FocalCosineLoss)
@@ -76,9 +76,10 @@ df['fold'] = df['fold'].astype('int')
 optimizer = AdamW
 base_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 # base_criterion = criterion_margin_focal_binary_cross_entropy
-mixup_criterion_ = partial(mixup_criterion, criterion=base_criterion, rate=1.0)
-ohem_criterion = partial(ohem_loss, rate=1.0, base_crit=base_criterion)
-criterions = [base_criterion, mixup_criterion_]
+# mixup_criterion_ = partial(mixup_criterion, criterion=base_criterion, rate=1.0)
+mixup_criterion = MixupLoss(base_criterion, 1.0)
+# ohem_criterion = partial(ohem_loss, rate=1.0, base_crit=base_criterion)
+criterions = [base_criterion, mixup_criterion]
 # criterion = criterion_margin_focal_binary_cross_entropy
 
 lr_reduce_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau
