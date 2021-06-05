@@ -1,5 +1,6 @@
 from random import choices
 from config import *
+from losses.mix import *
 import numpy as np
 import torch
 from torch import nn
@@ -27,6 +28,7 @@ class LightningSETI(pl.LightningModule):
       self.learning_rate = learning_rate
       self.batch_size = batch_size
       self.choice_weights = choice_weights
+      self.criterion = self.loss_fns[0]
       self.train_loss  = 0
       self.epoch_end_output = [] # Ugly hack for gathering results from multiple GPUs
   
@@ -47,29 +49,33 @@ class LightningSETI(pl.LightningModule):
         )
  
   def loss_func(self, logits, labels, choice_weights):
-      criterion = choices(self.loss_fns, weights=choice_weights)[0]
-      return criterion(logits, labels)
+      self.criterion = choices(self.loss_fns, weights=choice_weights)[0]
+      return self.criterion(logits, labels)
   
   def step(self, batch, choice_weights):
     _, x, y = batch
     x, y = x.float(), y.float()
-    logits = self.forward(x)
-    loss = self.loss_func(torch.squeeze(logits), torch.squeeze(y), choice_weights)
+    if self.criterion == self.loss_fns[1]:
+      x, y1, y2, lam = mixup(x, y)
+      y = [y1, y2, lam]
+    logits = torch.squeeze(self.forward(x))
+    loss = self.loss_func(logits, y, choice_weights)
     return loss, logits, y  
   
   def training_step(self, train_batch, batch_idx):
-    if self.current_epoch < 5:
+    if self.current_epoch < 4:
       loss, _, _ = self.step(train_batch, [1.0, 0.0])
     else:
         loss, _, _ = self.step(train_batch, self.choice_weights)
     self.train_loss  += loss.detach()
-    self.log(f'train_loss_fold_{self.fold}', self.train_loss/batch_idx, prog_bar=True, on_epoch=True)
+    self.log(f'train_loss_fold_{self.fold}', self.train_loss/batch_idx, prog_bar=True)
     if self.cyclic_scheduler is not None:
       self.cyclic_scheduler.step()
     return loss
 
   def validation_step(self, val_batch, batch_idx):
       self.train_loss  = 0
+      # self.criterion == self.loss_fns[0]
       loss, logits, y = self.step(val_batch, [1.0, 0])
       self.log(f'val_loss_fold_{self.fold}', loss, on_epoch=True, sync_dist=True) 
       val_log = {'val_loss':loss, 'probs':logits, 'gt':y}

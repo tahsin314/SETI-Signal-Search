@@ -36,23 +36,25 @@ def cutmix(data, targets, alpha):
     return data, targets
 
 def mixup(data, targets, alpha=1.0):
-    indices = torch.randperm(data.size(0))
-    shuffled_data = data[indices]
-    shuffled_targets = targets[indices]
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
 
-    lam = np.random.beta(alpha, alpha)
-    data = data * lam + shuffled_data * (1 - lam)
-    targets = [targets, shuffled_targets, lam]
-    return data, targets
+    batch_size = data.size()[0]
+    index = torch.randperm(batch_size)
 
+    mixed_x = lam * data + (1 - lam) * data[index, :]
+    y_a, y_b = targets, targets[index]
+    return mixed_x, y_a, y_b, lam
+    
 def cutmix_criterion(preds, targets, criterion, rate=0.7):
     preds, targets = cutmix(preds, targets)
     targets1, targets2, lam = targets[0], targets[1], targets[2]
     return lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2)
-    # return lam * criterion(preds, targets1) + (1 - lam) * criterion(preds, targets2)
 
 def mixup_criterion(preds, targets, criterion, rate=0.7):
-    preds, targets = mixup(preds, targets)
     targets1, targets2, lam = targets[0], targets[1], targets[2]
-    return (lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2))/3
+    return lam * ohem_loss(rate, criterion, preds, targets1) + (1 - lam) * ohem_loss(rate, criterion, preds, targets2)
     
