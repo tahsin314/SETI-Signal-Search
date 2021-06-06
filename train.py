@@ -124,7 +124,6 @@ for f in range(n_fold):
     transforms=val_aug)
     data_module = SETIDataModule(train_ds, valid_ds, test_ds,  sampler= sampler, 
     batch_size=batch_size)
-    # cyclic_scheduler = None
     cyclic_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer(plist, 
     lr=learning_rate), 
     5*len(data_module.train_dataloader()), 1, learning_rate/5, -1)
@@ -202,7 +201,7 @@ for f in range(n_fold):
     except:
       pass
     chk_path = checkpoint_callback2.best_model_path
-    model2 = LightningSETI.load_from_checkpoint(chk_path, model=base, choice_weights=[1.0, 0.0], loss_fns=base_criterion, optim=optimizer,
+    model2 = LightningSETI.load_from_checkpoint(chk_path, model=base, choice_weights=[1.0, 0.0], loss_fns=criterions, optim=optimizer,
     plist=plist, batch_size=batch_size, 
     lr_scheduler=lr_reduce_scheduler, cyclic_scheduler=cyclic_scheduler, 
     num_class=num_class, learning_rate = learning_rate, fold=f, random_id=random_id)

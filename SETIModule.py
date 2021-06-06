@@ -51,7 +51,7 @@ class LightningSETI(pl.LightningModule):
   def loss_func(self, logits, labels):
       return self.criterion(logits, labels)
   
-  def step(self, batch, choice_weights):
+  def step(self, batch):
     _, x, y = batch
     x, y = x.float(), y.float()
     if self.criterion == self.loss_fns[1]:
@@ -66,7 +66,7 @@ class LightningSETI(pl.LightningModule):
     #   loss, _, _ = self.step(train_batch, [1.0, 0.0])
     # else:
     self.criterion = choices(self.loss_fns, weights=choice_weights)[0]
-    loss, _, _ = self.step(train_batch, self.choice_weights)
+    loss, _, _ = self.step(train_batch)
     self.train_loss  += loss.detach()
     self.log(f'train_loss_fold_{self.fold}', self.train_loss/batch_idx, prog_bar=True)
     if self.cyclic_scheduler is not None:
@@ -74,14 +74,16 @@ class LightningSETI(pl.LightningModule):
     return loss
 
   def validation_step(self, val_batch, batch_idx):
+      self.criterion = self.loss_fns[0]
       self.train_loss  = 0
-      loss, logits, y = self.step(val_batch, [1.0, 0])
+      loss, logits, y = self.step(val_batch)
       self.log(f'val_loss_fold_{self.fold}', loss, on_epoch=True, sync_dist=True) 
       val_log = {'val_loss':loss, 'probs':logits, 'gt':y}
       self.epoch_end_output.append({k:v.cpu() for k,v in val_log.items()})
       return val_log
 
   def test_step(self, test_batch, batch_idx):
+      self.criterion = self.loss_fns[0]
       if len(test_batch) == 2:
         data_id, x = test_batch
       elif len(test_batch) == 3:

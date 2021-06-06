@@ -18,7 +18,7 @@ from model.effnet import EffNet
 from utils import *
 from albumentations.augmentations.transforms import Equalize, Posterize, Downscale, Rotate 
 from albumentations import (
-    PadIfNeeded, HorizontalFlip, VerticalFlip, CenterCrop,    
+    PadIfNeeded, HorizontalFlip, VerticalFlip, CenterCrop,  RandomSizedCrop,  
     RandomCrop, Resize, Crop, Compose, HueSaturationValue,
     Transpose, RandomRotate90, ElasticTransform, GridDistortion, 
     OpticalDistortion, RandomSizedCrop, Resize, CenterCrop,
@@ -41,7 +41,7 @@ learning_rate = float(params['learning_rate'])
 patience = int(params['patience'])
 accum_step = int(params['accum_step'])
 num_class = int(params['num_class'])
-choice_weights = [0.0, 1.0]
+choice_weights = [0.2, 0.8]
 cam_layer_name = params['cam_layer_name']
 gpu_ids = [int(i) for i in params['gpu_ids'].split(',')]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -81,10 +81,11 @@ else: sampler = None
 train_aug = Compose([
     OneOf([
     ], p=0.20),
-    # RandomSizedCrop(min_max_height=(int(sz*0.8), int(sz*0.8)), height=sz, width=sz, p=0.4),
-    HorizontalFlip(0.4),
+    # HorizontalFlip(0.4),
     VerticalFlip(0.4),
-    Rotate(limit=90, border_mode=2, p=0.4), 
+    Rotate(limit=360, border_mode=2, p=0.4), 
+    Resize(sz, sz, p=1, always_apply=True),
+    RandomSizedCrop(min_max_height=(int(sz*0.8), int(sz*0.8)), height=sz, width=sz, p=0.4),
     Resize(sz, sz, p=1, always_apply=True)
     ],    
       )
